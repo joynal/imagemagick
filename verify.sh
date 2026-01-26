@@ -23,28 +23,47 @@ EOF
 verify_arch() {
     PLATFORM=$1
     ARCH_NAME=$2
-    BINARY="magick-linux-${ARCH_NAME}"
+    BAZEL_ARCH=$3 
+    
+    # Find the tarball for this arch using wildcard as version changes
+    TARBALL=$(find "$BIN_DIR" -name "imagemagick-*-${BAZEL_ARCH}-static.tar.gz" | head -n 1)
 
-    if [ ! -f "$BIN_DIR/$BINARY" ]; then
-        echo "Error: Binary $BINARY not found!"
+    if [ -z "$TARBALL" ]; then
+        echo "Error: Tarball for $ARCH_NAME not found in $BIN_DIR!"
         return 1
     fi
-
-    echo "--- Verifying $ARCH_NAME on $PLATFORM ---"
+    
+    TAR_FILENAME=$(basename "$TARBALL")
+    echo "--- Verifying $TAR_FILENAME on $PLATFORM ---"
     
     # Build minimal verification image
     docker build --platform "$PLATFORM" -t "im-verify-$ARCH_NAME" -f Dockerfile.verify .
 
     # Run verification
+    # 1. Mount the tarball directory
+    # 2. Extract it inside the container
+    # 3. run the extracted binary
     docker run --rm --platform "$PLATFORM" -v "$(pwd)/$BIN_DIR:/data" "im-verify-$ARCH_NAME" bash -c "
+        cd /data
+        # Create a temp dir to extract
+        mkdir -p /tmp/verify
+        tar -xzf /data/$TAR_FILENAME -C /tmp/verify
+        
+        BINARY=/tmp/verify/bin/magick
+        
+        if [ ! -f \"\$BINARY\" ]; then
+            echo '✗ Failure: Binary not found after extraction.'
+            exit 1
+        fi
+        
         echo '-> LDD Output (Should have minimal dependencies):'
-        ldd /data/$BINARY
+        ldd \$BINARY
         
         echo '-> Version Check:'
-        /data/$BINARY --version
+        \$BINARY --version
         
         echo '-> Functional Test (Logo Gen):'
-        /data/$BINARY logo: /data/logo-static-$ARCH_NAME.png
+        \$BINARY logo: /data/logo-static-$ARCH_NAME.png
         if [ -f /data/logo-static-$ARCH_NAME.png ]; then
             echo '✓ Success: Image generated in minimal env.'
         else
@@ -55,10 +74,10 @@ verify_arch() {
 }
 
 # Verify amd64
-verify_arch "linux/amd64" "amd64"
+verify_arch "linux/amd64" "amd64" "x86_64"
 
 # Verify arm64
-verify_arch "linux/arm64" "arm64"
+verify_arch "linux/arm64" "arm64" "aarch64"
 
 echo "=== Verification Complete ==="
 rm Dockerfile.verify
