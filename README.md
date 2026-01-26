@@ -8,14 +8,9 @@ This directory contains standalone binaries of ImageMagick for Linux (`amd64` an
 
 ## Requirements
 *   **OS**: Linux (Ubuntu 24.04 recommended, or any distro with compatible glibc).
-*   **Dependencies**: The binaries are dynamically linked to several system libraries. You must install the following packages on Ubuntu 24.04:
-    ```bash
-    sudo apt-get install -y \
-        libjpeg-turbo8 libpng16-16 libtiff6 libwebp7 libwebpmux3 libwebpdemux2 \
-        libopenjp2-7 libgif7 librsvg2-2 libfontconfig1 libfreetype6 \
-        libx11-6 libxext6 libxml2 libzip4 liblcms2-2 libgomp1 libjbig0 \
-        ghostscript
-    ```
+*   **Dependencies**: The binaries are **statically linked** for most libraries (JPEG, PNG, TIFF, WebP, Freetype). They only depend on standard system libraries (`glibc`, `libm`, `libgcc`).
+    *   No external packages (`apt-get install ...`) are required for standard image formats.
+
 
 ## Usage
 1.  Make the binary executable (if not already):

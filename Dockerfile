@@ -1,8 +1,10 @@
-# Dockerfile for building ImageMagick on Ubuntu 24.04
-FROM ubuntu:24.04
+# Dockerfile for building ImageMagick on Ubuntu 24.04 with STATIC delegates
+FROM ubuntu:24.04 AS builder
 
-# Update and install build dependencies
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+
+# Install build tools
 RUN apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
@@ -11,41 +13,67 @@ RUN apt-get update && apt-get install -y \
     autoconf \
     automake \
     libtool \
-    # Image Format Libraries
-    libjpeg-dev \
-    libpng-dev \
-    libtiff-dev \
-    libwebp-dev \
-    libgif-dev \
-    libopenjp2-7-dev \
-    librsvg2-dev \
-    libfreetype6-dev \
-    libfontconfig1-dev \
-    libx11-dev \
-    libxext-dev \
-    libxml2-dev \
-    liblzma-dev \
-    liblcms2-dev \
-    zlib1g-dev \
-    libzip-dev \
-    # Helper to clean up
+    nasm \  
+    cmake \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone ImageMagick
 WORKDIR /usr/src
-# Using master or a specific stable tag. 
-# We'll fetch the latest tags to find the latest stable version if needed, 
-# or just clone the repo which defaults to main (usually dev), 
-# but let's clone the latest generic release tag to be safe, or just use main with care.
-# The user asked for "latest version", so cloning the repo is standard.
-RUN git clone https://github.com/ImageMagick/ImageMagick.git
 
+# --- 1. ZLIB ---
+RUN curl -L https://zlib.net/zlib-1.3.1.tar.gz | tar xz && \
+    cd zlib-1.3.1 && \
+    ./configure --prefix=/usr/local --static && \
+    make -j$(nproc) && \
+    make install
+
+# --- 2. LIBJPEG-TURBO ---
+RUN curl -L -O https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/3.0.1.tar.gz && \
+    tar xzf 3.0.1.tar.gz && \
+    cd libjpeg-turbo-3.0.1 && \
+    cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_SHARED=OFF -DENABLE_STATIC=ON . && \
+    make -j$(nproc) && \
+    make install
+
+# --- 3. LIBPNG ---
+RUN curl -L -O https://download.sourceforge.net/libpng/libpng-1.6.40.tar.gz && \
+    tar xzf libpng-1.6.40.tar.gz && \
+    cd libpng-1.6.40 && \
+    ./configure --prefix=/usr/local --disable-shared --enable-static && \
+    make -j$(nproc) && \
+    make install
+
+# --- 4. LIBTIFF ---
+RUN curl -L -O https://download.osgeo.org/libtiff/tiff-4.6.0.tar.gz && \
+    tar xzf tiff-4.6.0.tar.gz && \
+    cd tiff-4.6.0 && \
+    ./configure --prefix=/usr/local --disable-shared --enable-static --disable-zstd --disable-lzma --disable-webp --without-x && \
+    make -j$(nproc) && \
+    make install
+
+# --- 5. LIBWEBP ---
+RUN curl -L -O https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.3.2.tar.gz && \
+    tar xzf libwebp-1.3.2.tar.gz && \
+    cd libwebp-1.3.2 && \
+    ./configure --prefix=/usr/local --disable-shared --enable-static --disable-gl --disable-sdl --disable-png --disable-jpeg --disable-tiff --disable-gif && \
+    make -j$(nproc) && \
+    make install
+
+# --- 6. FREETYPE ---
+RUN curl -L -O https://download.savannah.gnu.org/releases/freetype/freetype-2.13.2.tar.gz && \
+    tar xzf freetype-2.13.2.tar.gz && \
+    cd freetype-2.13.2 && \
+    ./configure --prefix=/usr/local --disable-shared --enable-static --without-harfbuzz --without-brotli --without-png --without-zlib && \
+    make -j$(nproc) && \
+    make install
+
+# --- 7. ImageMagick ---
+RUN git clone https://github.com/ImageMagick/ImageMagick.git ImageMagick
 WORKDIR /usr/src/ImageMagick
 
-# Configure for static build
-# We want to disable shared libraries to keep the binary standalone (except for system libs like glibc)
-# We enable delegate libraries.
+# Configure to link against our static libs
 RUN ./configure \
+    --prefix=/usr/local \
     --enable-static \
     --disable-shared \
     --with-modules=no \
@@ -55,16 +83,18 @@ RUN ./configure \
     --with-webp=yes \
     --with-freetype=yes \
     --enable-hdri=yes \
-    --with-quantum-depth=16
+    --disable-openmp \
+    --with-quantum-depth=16 \
+    --without-x \
+    --without-magick-plus-plus \
+    --without-perl \
+    PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
-# Build
 RUN make -j$(nproc)
-
-# Install to a local dir just to verify, but we will mostly just grab the binary from 'utilities'
 RUN make install
 
-# Verify inside the build image
+# Quick verify in builder
 RUN /usr/local/bin/magick --version
+RUN ldd /usr/local/bin/magick || true
 
-# Entrypoint to keep it alive or just exit, we will cp the file out.
 CMD ["/bin/bash"]
