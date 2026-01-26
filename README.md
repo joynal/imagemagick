@@ -14,6 +14,7 @@ The resulting binaries are designed to run on minimal Linux distributions (e.g.,
     *   `freetype` (Font rendering)
     *   `zlib`
 *   **Minimal Runtime Footprint**: OpenMP is disabled to remove dependency on `libgomp`.
+*   **Legacy Tool Support**: Includes symlinks for `convert`, `identify`, `compare`, etc.
 *   **Bazel Ready**: Packages binaries into tarballs compatible with Bazel's `http_archive`.
 
 ## Prerequisites
@@ -23,7 +24,7 @@ The resulting binaries are designed to run on minimal Linux distributions (e.g.,
 
 1.  Clone this repository:
     ```bash
-    git clone https://github.com/yourusername/imagemagick-static-builder.git
+    git clone https://github.com/joynal/imagemagick-static-builder.git
     cd imagemagick-static-builder
     ```
 
@@ -40,7 +41,11 @@ The resulting binaries are designed to run on minimal Linux distributions (e.g.,
     Each tarball contains:
     ```text
     bin/
-    └── magick
+    ├── magick
+    ├── convert -> magick
+    ├── identify -> magick
+    ├── compare -> magick
+    └── ... (other tools)
     ```
 
 ## Bazel Integration

@@ -57,13 +57,22 @@ verify_arch() {
         fi
         
         echo '-> LDD Output (Should have minimal dependencies):'
-        ldd \$BINARY
+        ldd \"\$BINARY\"
         
         echo '-> Version Check:'
-        \$BINARY --version
+        \"\$BINARY\" --version
+        
+        echo '-> Legacy Tool Check (identify):'
+        if [ -L /tmp/verify/bin/identify ]; then
+             echo \"✓ identify symlink exists\"
+             /tmp/verify/bin/identify --version
+        else
+             echo \"✗ identify symlink missing\"
+             exit 1
+        fi
         
         echo '-> Functional Test (Logo Gen):'
-        \$BINARY logo: /data/logo-static-$ARCH_NAME.png
+        \"\$BINARY\" logo: /data/logo-static-$ARCH_NAME.png
         if [ -f /data/logo-static-$ARCH_NAME.png ]; then
             echo '✓ Success: Image generated in minimal env.'
         else

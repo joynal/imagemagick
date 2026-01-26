@@ -36,6 +36,14 @@ build_and_package() {
     # Copy binary to stage/bin/magick
     docker cp "$CONTAINER":/usr/local/bin/magick "$STAGE_DIR/bin/magick"
     
+    # Create symlinks for legacy tools
+    echo "Creating symlinks..."
+    cd "$STAGE_DIR/bin"
+    for tool in compare composite conjure convert identify mogrify montage stream magick-script; do
+        ln -sf magick "$tool"
+    done
+    cd - > /dev/null
+    
     # Get version for filename
     IM_VERSION=$(docker run --rm --platform "$PLATFORM" "$TAG" magick --version | head -n 1 | awk '{print $3}')
     TAR_NAME="imagemagick-${IM_VERSION}-${BAZEL_ARCH}-static.tar.gz"
