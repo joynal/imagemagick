@@ -62,7 +62,7 @@ download() {
 }
 
 echo "--- 1. ZLIB ---"
-download "https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz" "zlib-${ZLIB_VERSION}.tar.gz"
+download "https://github.com/madler/zlib/releases/download/v${ZLIB_VERSION}/zlib-${ZLIB_VERSION}.tar.gz" "zlib-${ZLIB_VERSION}.tar.gz"
 if [ ! -f "$INSTALL_DIR/lib/libz.a" ]; then
     cd "$SRC_DIR"
     tar xzf "zlib-${ZLIB_VERSION}.tar.gz"
@@ -218,10 +218,14 @@ echo "Creating $TAR_NAME..."
 # Create a staging directory to organize the files cleanly
 STAGE_DIR="$BUILD_DIR/stage"
 rm -rf "$STAGE_DIR"
-mkdir -p "$STAGE_DIR/bin"
+mkdir -p "$STAGE_DIR/bin" "$STAGE_DIR/etc/ImageMagick-7" "$STAGE_DIR/share/ImageMagick-7"
 
 # Copy the binary
 cp "$INSTALL_DIR/bin/magick" "$STAGE_DIR/bin/"
+
+# Copy config files (colors.xml, policy.xml, etc.) needed at runtime
+cp -r "$INSTALL_DIR/etc/ImageMagick-7/." "$STAGE_DIR/etc/ImageMagick-7/"
+cp -r "$INSTALL_DIR/share/ImageMagick-7/." "$STAGE_DIR/share/ImageMagick-7/"
 
 # Create symlinks
 cd "$STAGE_DIR/bin"
@@ -234,7 +238,7 @@ cd - > /dev/null
 # Current dir is build-work-macos/src/ImageMagick usually. Go back up.
 cd "$BUILD_DIR" 
 # We want to tar the 'bin' directory inside stage
-tar -czf "$TAR_NAME" -C "$STAGE_DIR" bin
+tar -czf "$TAR_NAME" -C "$STAGE_DIR" bin etc share
 
 # Move to local-bin
 mv "$TAR_NAME" "../local-bin/"

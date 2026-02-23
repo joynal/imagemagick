@@ -31,10 +31,14 @@ build_and_package() {
     # Staging area for tarball
     STAGE_DIR="$OUTPUT_DIR/stage_${ARCH_NAME}"
     rm -rf "$STAGE_DIR"
-    mkdir -p "$STAGE_DIR/bin"
+    mkdir -p "$STAGE_DIR/bin" "$STAGE_DIR/etc/ImageMagick-7" "$STAGE_DIR/share/ImageMagick-7"
     
     # Copy binary to stage/bin/magick
     docker cp "$CONTAINER":/usr/local/bin/magick "$STAGE_DIR/bin/magick"
+    
+    # Copy config files (colors.xml, policy.xml, etc.) needed at runtime
+    docker cp "$CONTAINER":/usr/local/etc/ImageMagick-7/. "$STAGE_DIR/etc/ImageMagick-7/"
+    docker cp "$CONTAINER":/usr/local/share/ImageMagick-7/. "$STAGE_DIR/share/ImageMagick-7/"
     
     # Create symlinks for legacy tools
     echo "Creating symlinks..."
@@ -52,7 +56,7 @@ build_and_package() {
     # Create tarball preserving 'bin' directory structure, compatible with strip_prefix="bin"
     # usage: tar -czf <file> -C <dir> .
     # Use -C to change to STAGE_DIR so 'bin' is at the root of the archive
-    tar -czf "$OUTPUT_DIR/$TAR_NAME" -C "$STAGE_DIR" bin
+    tar -czf "$OUTPUT_DIR/$TAR_NAME" -C "$STAGE_DIR" bin etc share
     
     # Calculate SHA256
     if command -v sha256sum >/dev/null 2>&1; then

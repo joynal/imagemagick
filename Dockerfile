@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /usr/src
 
 # --- 1. ZLIB ---
-RUN curl -L https://zlib.net/zlib-1.3.1.tar.gz | tar xz && \
+RUN curl -fsSL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz | tar xz && \
     cd zlib-1.3.1 && \
     ./configure --prefix=/usr/local --static && \
     make -j$(nproc) && \
